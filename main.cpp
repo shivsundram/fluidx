@@ -1,3 +1,6 @@
+//"This software contains source code
+//provided by NVIDIA Corporation."
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
