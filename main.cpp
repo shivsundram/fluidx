@@ -8,7 +8,7 @@
 #include <OpenGL/gl.h>
 #include <math.h>       /* fmod */
 #include <iostream>
-#define DIM 100
+#define DIM 200
 #define DS (DIM*DIM)
 
 using namespace std;
@@ -97,8 +97,9 @@ void advectParticles()
 	    	//printf("%f %f \n",0.0+j,0.0+i );
 	    	int x = particles[j*DIM+i].x*DIM;
 	    	int y = particles[j*DIM+i].y*DIM;
-	        particles[j*DIM+i].x =fmod(particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,1.0f);
-	        particles[j*DIM+i].y =fmod(particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,1.0f);
+	        particles[j*DIM+i].x =fmod(1.0+particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,1.0f);
+	        particles[j*DIM+i].y =fmod(1.0+particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,1.0f);
+            //cout<<j*DIM+i<<", "<<particles[j*DIM+i].x<<", "<<particles[j*DIM+i].y<<endl;
 	    }
 	}
 
@@ -107,7 +108,7 @@ void advectParticles()
 
 void printGridX(float2* u, int n )
 {
-    for (int y = 0 ; y<n; y++){
+    for (int y = n-1 ; y>=0; y--){
         for (int x =0 ; x<n; x++){
             cout<<u[y*n+x].x<<", ";
         }
@@ -171,8 +172,10 @@ void advectVelocity(float time_step)
         for (int y = 1 ;y < DIM; y++){
             x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
             //printf("%f %f\n",x_back, fmod(x_back,1.0) );
-            x_back = fmod(x_back, 1.0);
+            x_back = fmod(x_back+1.0, 1.0);
             y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
+            y_back = fmod(y_back+1.0, 1.0);
+            //x_back = fmod(y_back+1.0, 1.0);
             //x_back = fmod(y_back, 1.0);
             vfield_temp[y*DIM+x] =  bilinterp(vfield, x_back, y_back, DIM); 
             //printf("%i %i\n",x,y );
@@ -243,7 +246,7 @@ void diffuse()
     float dx2 = (1.0f/DIM)*(1.0f/DIM);
     float alpha= dx2/(dt*.0001f);
     float rbeta = 1.0f/(4.0f+alpha);
-    gsl1(vfield, vfield, alpha, rbeta, DIM, 40);  
+    gsl1(vfield, vfield, alpha, rbeta, DIM, 20);  
 }
 
 void divergence(float2 *u, float2 *d, int n){
@@ -259,10 +262,10 @@ void divergence(float2 *u, float2 *d, int n){
             d[y*n+x].x=((right.x-left.x)+(up.x-down.x))*scale;
             d[y*n+x].y=((right.y-left.y)+(up.y-down.y))*scale;
 
-
+            cout<<u[(y)*n+x].x<<", "<<up.x<<", "<<down.x<<", "<<right.x<<", "<<left.x<<endl;
         }
     }
-
+    //exchangeboundary(d,n);
 }
 
 
@@ -350,6 +353,11 @@ void click(int button, int updown, int x, int y)
 
 void motion(int x, int y)
 {
+    float cx= lastx-x;
+    float cy= lasty-y;
+    float cxn = cx/ sqrt(cx*cx+cy*cy);
+    float cyn = cy/ sqrt(cx*cx+cy*cy);
+    //cout<<cx<<", "<<cy<<endl;
     // Convert motion coordinates to domain
     float fx = (x / (float)wWidth);
     float fy = ((wHeight-y) / (float)wHeight);
@@ -363,8 +371,8 @@ void motion(int x, int y)
     			for (int j = -10 ; j<10 ;j ++){
                     //TODO, use modulo function for indices of vfield
                     if(ny+i<DIM && ny+i>=0 && nx+j<DIM && nx+j>=0){
-		              vfield[(ny+i)*DIM+nx+j].x +=.8f;
-		              vfield[(ny+i)*DIM+nx+j].y +=.8f;
+		              vfield[(ny+i)*DIM+nx+j].x +=-cxn*1.0f;
+		              vfield[(ny+i)*DIM+nx+j].y +=cyn*1.0f;
                     }
     			}
     		}
@@ -372,43 +380,12 @@ void motion(int x, int y)
             //printf("%f\n",vfield[ny*DIM+nx].x );
  
     }
+    
 
     glutPostRedisplay();
 }
 
 
-
-int initGL(int *argc, char **argv)
-{
-    glutInit(argc, argv);
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-    glutInitWindowSize(wWidth*2, wHeight*2);
-    glutCreateWindow("Compute Stable Fluids");
-    glutDisplayFunc(display);
-    glutMouseFunc(click);
-    glutMotionFunc(motion);
-    glutReshapeFunc(reshape);
-    return true;
-}
-
-void fluidx(int argc, char **argv){
-    vfield = (float2 *)malloc(sizeof(float2) * DS);
-    vfield_temp = (float2 *)malloc(sizeof(float2) * DS);
-
-    initvfield(vfield, 0.01f, 0.01f);
-    initvfield(vfield_temp , 0.01f, 0.01f);
-   // initvfield(divfield, 0.0f, 0.0f);
-
-    particles = (float2 *)malloc(sizeof(float2) * DS);
-    initParticles(particles, DIM, DIM);
-    initGL(&argc,  argv);
-
-
-    glGenBuffers(1, &vbo);
-    memcopy();
-
-    glutMainLoop();
-}
 
 
 void testBoundary(){
@@ -471,7 +448,7 @@ void testgsl1(){
     int n =4;
     float2* z = (float2*) malloc(n*n*sizeof(float2));
     for (int i =0 ; i<n*n; i++){
-        z[i].x=0.0f;
+        z[i].x=1.0f;
         z[i].y=0.0f;
     }   
     float c = 1.0f;
@@ -483,15 +460,68 @@ void testgsl1(){
         }
     }
     printGridX(z, n);
-    gsl1(z, z, 1.0f, 1.0f, n,1);
-    cout<<endl;
-    printGridX(z,n);
+    for (int i =0 ; i<1; i++){
+        gsl1(z, z, 1.0, 1.0f, n,1);
+        cout<<endl;
+        printGridX(z,n);
+    }
+
 }
 
 void testdivergence(){
 
-
+    int n =4;
+    float2* z = (float2*) malloc(n*n*sizeof(float2));
+    float2* d = (float2*) malloc(n*n*sizeof(float2));
+    for (int i =0 ; i<n*n; i++){
+        d[i].x=0.0f;
+        z[i].x=0.0f;
+    }   
+    float c = 1.0f;
+    for (int i =1 ; i <n-1; i++){
+        for (int j=1;j<n-1;j++){
+            z[n*j+i].x=c;
+            c=c+1.0f;
+        }
+    }
+    divergence(z, d, n);
+    printGridX(z,n);
+    cout<<endl;
+    printGridX(d,n);
 }
+
+int initGL(int *argc, char **argv)
+{
+    glutInit(argc, argv);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+    glutInitWindowSize(wWidth*2, wHeight*2);
+    glutCreateWindow("Compute Stable Fluids");
+    glutDisplayFunc(display);
+    glutMouseFunc(click);
+    glutMotionFunc(motion);
+    glutReshapeFunc(reshape);
+    return true;
+}
+
+void fluidx(int argc, char **argv){
+    vfield = (float2 *)malloc(sizeof(float2) * DS);
+    vfield_temp = (float2 *)malloc(sizeof(float2) * DS);
+
+    initvfield(vfield, 0.01f, 0.01f);
+    initvfield(vfield_temp , 0.01f, 0.01f);
+   // initvfield(divfield, 0.0f, 0.0f);
+
+    particles = (float2 *)malloc(sizeof(float2) * DS);
+    initParticles(particles, DIM, DIM);
+    initGL(&argc,  argv);
+
+
+    glGenBuffers(1, &vbo);
+    memcopy();
+
+    glutMainLoop();
+}
+
 
 int main(int argc, char **argv)
 {
@@ -501,5 +531,6 @@ int main(int argc, char **argv)
     //testjacobi();
     //testBoundary();
     //testgsl1();
+    //testdivergence();
 	return 0;
 }
