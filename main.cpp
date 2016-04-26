@@ -45,7 +45,8 @@ static int lastx = 0, lasty = 0;
 float2 *vfield = NULL;
 float2 *vfield_temp = NULL;
 float2 *rhs = NULL; 
-float2 *divfield=NULL;
+float *divfield=NULL;
+float *pressure=NULL;
 static float dt=.01f;
 
 //random float between -.5f and .5f
@@ -85,6 +86,19 @@ void initvfield(float2* field, float initial_x, float initial_y )
     }
 }
 
+//init a constant velocity field
+void initvfield1(float* field, float initial_x)
+{
+    for (int i = 0; i < DIM; i++)
+    {
+        for (int j = 0; j < DIM; j++)
+        {
+            //printf("%f %f \n",0.0+j,0.0+i );
+            field[j*DIM+i] = initial_x;
+        }
+    }
+}
+
 
 //advect particles using velocity field and DT
 //uses periodic boundary conditions
@@ -117,6 +131,17 @@ void printGridX(float2* u, int n )
 }
 
 
+void printGrid(float* u, int n )
+{
+    for (int y = n-1 ; y>=0; y--){
+        for (int x =0 ; x<n; x++){
+            cout<<u[y*n+x]<<", ";
+        }
+        cout<<endl;
+    }
+}
+
+
 
 float2 bilinterp(float2 * u, float x, float y, int dim)
 {
@@ -139,7 +164,7 @@ float2 bilinterp(float2 * u, float x, float y, int dim)
     float fb = (x-floor(x))*br + (floor(x)+1-x)*bl ; 
 
     //interpolate in vertical (j) direction 
-    result.x = .99*(y-floor(y))*fu + .99*(floor(y)+1-y)*fb;   
+    result.x = (y-floor(y))*fu + (floor(y)+1-y)*fb;   
 
     ul = u[(int) ((floor(y)+1) *dim + floor(x))].y;
     ur = u[(int) ((floor(y)+1) *dim + floor(x)+1)].y;
@@ -152,7 +177,7 @@ float2 bilinterp(float2 * u, float x, float y, int dim)
     fb = (x-floor(x))*br + (floor(x)+1-x)*bl ; 
 
     //interpolate in vertical (j) direction 
-    result.y = .99*(y-floor(y))*fu + .99*(floor(y)+1-y)*fb;   
+    result.y = (y-floor(y))*fu + (floor(y)+1-y)*fb;   
     //printf("%f \n",result.x );
 
     return result;
@@ -210,6 +235,31 @@ void exchangeboundary(float2* u, int n){
     }
 }
 
+void exchangeboundary1(float* u, int n){
+    //exchange top and bottom
+    int top = n-1;
+    for (int i = 0; i<n; i++){
+        u[i]=u[(n)*(top-1)+i];
+        u[i]=u[(n)*(top-1)+i];
+
+        u[n*(top)+i]=u[n+i];
+        u[n*(top)+i]=u[n+i];
+
+    }
+
+    //exchange left and right
+    for (int i = 1; i<n-1; i++){
+        u[i*n]=u[(n)*i+top-1];
+        u[i*n]=u[(n)*i+top-1];
+
+        u[n*i+top]=u[n*i+1];
+        u[n*i+top]=u[n*i+1];
+    }
+}
+
+
+
+
 //gauss siedel preconditioned by the L1 inverse
 //using L1 inverse requires only 1 array, eliminating
 //the need for buffer swapping
@@ -239,6 +289,7 @@ void gsl1(float2* u, float2* b, float alpha, float rbeta,int n, int iters)
 }
 
 
+
 void diffuse()
 {
     //todo, correctly derive jacobi weights
@@ -249,7 +300,8 @@ void diffuse()
     gsl1(vfield, vfield, alpha, rbeta, DIM, 20);  
 }
 
-void divergence(float2 *u, float2 *d, int n){
+
+void divergence(float2 *u, float *d, int n){
 
     float scale = ((1.0)/n)*.5f;
     for (int x =1; x<n-1; x++){
@@ -259,26 +311,63 @@ void divergence(float2 *u, float2 *d, int n){
             float2 left  = u[(y)*n+x-1];
             float2 right = u[(y)*n+x+1];
 
-            d[y*n+x].x=((right.x-left.x)+(up.x-down.x))*scale;
-            d[y*n+x].y=((right.y-left.y)+(up.y-down.y))*scale;
+            d[y*n+x]=((right.x-left.x)+(up.y-down.y))*scale;
 
-            cout<<u[(y)*n+x].x<<", "<<up.x<<", "<<down.x<<", "<<right.x<<", "<<left.x<<endl;
+            //cout<<u[(y)*n+x].x<<", "<<up.x<<", "<<down.x<<", "<<right.x<<", "<<left.x<<endl;
         }
     }
-    //exchangeboundary(d,n);
+    exchangeboundary1(d,n);
+}
+
+
+//1D version ofgauss siedel preconditioned by the L1 inverse
+//using L1 inverse requires only 1 array, eliminating
+//the need for buffer swapping
+void gsl11(float* d, float *p, float alpha, float rbeta,int n, int iters)
+{
+    for (int i = 0; i <iters; i ++)
+    {
+        for (int y = 1 ; y<n-1; y++)
+        {
+            for (int x =1; x<n-1; x++)
+            {
+                float up    = p[(y+1)*n+x];
+                float down  = p[(y-1)*n+x];
+                float left  = p[(y)*n+x-1];
+                float right = p[(y)*n+x+1];
+                p[y*n+x]=rbeta*(up+down+left+right+alpha*d[y*n+x]);
+            }
+        }
+        exchangeboundary1(p, n);
+    }
 }
 
 
 
-void subtractpressure(){
-
+void subtractpressure(float2* u, float* p, int n){
+    float dx=1.0f/DIM;
+    for (int x =1; x<DIM-1; x++){
+        for(int y =1; y<DIM-1; y++){
+            //cout<<(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx)<<endl;
+            u[y*n+x].x=u[y*n+x].x-30000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx);
+            u[y*n+x].y=u[y*n+x].y-30000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx);
+        }
+    }
 
 }
 
+//velocity,
 void project()
 {
+    initvfield1(pressure, 0.0f);
+    initvfield1(divfield, 0.0f);
 
 
+    float alpha = -1.0f*(1.0f/DIM)*(1.0f/DIM);
+    float rbeta = 1.0f/4.0f;
+    divergence(vfield, divfield, DIM);
+    gsl11(divfield, pressure, alpha, rbeta,DIM, 40);
+    subtractpressure(vfield, pressure, DIM);
 }
 
 
@@ -287,6 +376,7 @@ void simulate()
     advectVelocity(dt);
     advectParticles();
     diffuse();
+   project();
 }
 
 void memcopy()
@@ -472,9 +562,9 @@ void testdivergence(){
 
     int n =4;
     float2* z = (float2*) malloc(n*n*sizeof(float2));
-    float2* d = (float2*) malloc(n*n*sizeof(float2));
+    float* d = (float*) malloc(n*n*sizeof(float));
     for (int i =0 ; i<n*n; i++){
-        d[i].x=0.0f;
+        d[i]=0.0f;
         z[i].x=0.0f;
     }   
     float c = 1.0f;
@@ -487,7 +577,7 @@ void testdivergence(){
     divergence(z, d, n);
     printGridX(z,n);
     cout<<endl;
-    printGridX(d,n);
+    printGrid(d,n);
 }
 
 int initGL(int *argc, char **argv)
@@ -506,6 +596,8 @@ int initGL(int *argc, char **argv)
 void fluidx(int argc, char **argv){
     vfield = (float2 *)malloc(sizeof(float2) * DS);
     vfield_temp = (float2 *)malloc(sizeof(float2) * DS);
+    divfield = (float *)malloc(sizeof(float) * DS);
+    pressure = (float *)malloc(sizeof(float) * DS);
 
     initvfield(vfield, 0.01f, 0.01f);
     initvfield(vfield_temp , 0.01f, 0.01f);
