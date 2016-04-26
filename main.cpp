@@ -180,6 +180,8 @@ float2 bilinterp(float2 * u, float x, float y, int dim)
     result.y = (y-floor(y))*fu + (floor(y)+1-y)*fb;   
     //printf("%f \n",result.x );
 
+    result.y=.999*result.y;
+    result.x=.999*result.x;
     return result;
 }
 
@@ -349,8 +351,8 @@ void subtractpressure(float2* u, float* p, int n){
     for (int x =1; x<DIM-1; x++){
         for(int y =1; y<DIM-1; y++){
             //cout<<(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx)<<endl;
-            u[y*n+x].x=u[y*n+x].x-30000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx);
-            u[y*n+x].y=u[y*n+x].y-30000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx);
+            u[y*n+x].x=u[y*n+x].x-40000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx);
+            u[y*n+x].y=u[y*n+x].y-40000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx);
         }
     }
 
