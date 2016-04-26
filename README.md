@@ -6,9 +6,9 @@ velcity diffusion
 linear solver: gauss siedel preconditioned by L1 inverse
 basic point click UI
 periodic boundary conditions
+Pressure gradient subtraction (incompressible flow)
 
 Coming Soon:
-Pressure gradient subtraction (incompressible flow)
 pure Neumman boundary conditions
 gauss siedel red black linear solver
 chebychev linear solver
