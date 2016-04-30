@@ -1,6 +1,6 @@
 //"This software contains source code
 //provided by NVIDIA Corporation."
-
+//TODO add mod wrapping for projection
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -195,13 +195,19 @@ void advectVelocity(float time_step)
 {
     float x_back = 0.0f; 
     float y_back = 0.0f; 
-    for (int x = 1; x < DIM; x++){
-        for (int y = 1 ;y < DIM; y++){
+    for (int x = 1; x < DIM-1; x++){
+        for (int y = 1 ;y < DIM-1; y++){
             x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
             //printf("%f %f\n",x_back, fmod(x_back,1.0) );
-            x_back = fmod(x_back+1.0, 1.0);
+            x_back = fmod(x_back+1.0, .99999);
             y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
-            y_back = fmod(y_back+1.0, 1.0);
+            y_back = fmod(y_back+1.0, .99999);
+            if (x_back<0.0f || x_back>=1.0f){
+                printf("%f\n",x_back);
+            }
+            if (y_back<0.0f || y_back>=1.0f){
+                printf("%f\n",y_back);
+            }
             //x_back = fmod(y_back+1.0, 1.0);
             //x_back = fmod(y_back, 1.0);
             vfield_temp[y*DIM+x] =  bilinterp(vfield, x_back, y_back, DIM); 
@@ -258,9 +264,6 @@ void exchangeboundary1(float* u, int n){
         u[n*i+top]=u[n*i+1];
     }
 }
-
-
-
 
 //gauss siedel preconditioned by the L1 inverse
 //using L1 inverse requires only 1 array, eliminating
@@ -351,8 +354,8 @@ void subtractpressure(float2* u, float* p, int n){
     for (int x =1; x<DIM-1; x++){
         for(int y =1; y<DIM-1; y++){
             //cout<<(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx)<<endl;
-            u[y*n+x].x=u[y*n+x].x-40000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx);
-            u[y*n+x].y=u[y*n+x].y-40000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx);
+            u[y*n+x].x=u[y*n+x].x-70000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx);
+            u[y*n+x].y=u[y*n+x].y-70000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx);
         }
     }
 
@@ -375,10 +378,14 @@ void project()
 
 void simulate()
 {
+    printf("a\n");
     advectVelocity(dt);
+        printf("b\n");
     advectParticles();
+        printf("c\n");
     diffuse();
-   project();
+        printf("d\n");
+    project();
 }
 
 void memcopy()
@@ -463,8 +470,8 @@ void motion(int x, int y)
     			for (int j = -10 ; j<10 ;j ++){
                     //TODO, use modulo function for indices of vfield
                     if(ny+i<DIM && ny+i>=0 && nx+j<DIM && nx+j>=0){
-		              vfield[(ny+i)*DIM+nx+j].x +=-cxn*1.0f;
-		              vfield[(ny+i)*DIM+nx+j].y +=cyn*1.0f;
+		              vfield[(ny+i)*DIM+nx+j].x +=-cxn*.50f;
+		              vfield[(ny+i)*DIM+nx+j].y +=cyn*.50f;
                     }
     			}
     		}
