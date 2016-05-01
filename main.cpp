@@ -378,13 +378,12 @@ void project()
 
 void simulate()
 {
-    printf("a\n");
     advectVelocity(dt);
-        printf("b\n");
+
     advectParticles();
-        printf("c\n");
+
     diffuse();
-        printf("d\n");
+
     project();
 }
 
