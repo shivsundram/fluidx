@@ -195,6 +195,8 @@ void advectVelocity(float time_step)
     for (int x = 1; x < DIM-1; x++){
         for (int y = 1 ;y < DIM-1; y++){
 //printf("x %i y %i x vel %f y vel %f xback %f yback %f \n",x,y,vfield[y*DIM+x].x,vfield[y*DIM+x].y,x_back, y_back );
+            
+        
             x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
             x_back = fmod(x_back+1.0, .99999);
             y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
@@ -351,8 +353,12 @@ void subtractpressure(float2* u, float* p, int n){
             u[y*n+x].x=fmax(fmin(u[y*n+x].x-70000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx), 3.0), -3.0);
             u[y*n+x].y=fmax(fmin(u[y*n+x].y-70000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx), 3.0), -3.0);
 
-            u[y*n+x].x=(!isnan(u[y*n+x].x))*u[y*n+x].x;
-            u[y*n+x].y=(!isnan(u[y*n+x].y))*u[y*n+x].y;
+            if (isnan(u[y*n+x].x)){
+                u[y*n+x].x=0;
+            }
+            if (isnan(u[y*n+x].y)){
+                u[y*n+x].y=0;
+            }
         }
     }
 
