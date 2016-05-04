@@ -157,8 +157,6 @@ float2 bilinterp(float2 * u, float x, float y, int dim)
     float bl = u[(int) ((floor(y))   *dim + floor(x))].x;
     float br = u[(int) ((floor(y))   *dim + floor(x)+1)].x;
 
-    //printf("%f %f\n",x,y );
-    //printf("%f %f %f %f \n",ul, ur, bl, br);
     //interpolate in horizontal (x) direction 
     float fu = (x-floor(x))*ur + (floor(x)+1-x)*ul ; 
     float fb = (x-floor(x))*br + (floor(x)+1-x)*bl ; 
@@ -171,14 +169,13 @@ float2 bilinterp(float2 * u, float x, float y, int dim)
     bl = u[(int) ((floor(y))   *dim + floor(x))].y;
     br = u[(int) ((floor(y))   *dim + floor(x)+1)].y;
 
-    //printf("%f %f %f %f \n",ul, ur, bl, br);
     //interpolate in horizontal (x) direction 
     fu = (x-floor(x))*ur + (floor(x)+1-x)*ul ; 
     fb = (x-floor(x))*br + (floor(x)+1-x)*bl ; 
 
     //interpolate in vertical (j) direction 
     result.y = (y-floor(y))*fu + (floor(y)+1-y)*fb;   
-    //printf("%f \n",result.x );
+;
 
     result.y=.999*result.y;
     result.x=.999*result.x;
@@ -197,8 +194,8 @@ void advectVelocity(float time_step)
     float y_back = 0.0f; 
     for (int x = 1; x < DIM-1; x++){
         for (int y = 1 ;y < DIM-1; y++){
+//printf("x %i y %i x vel %f y vel %f xback %f yback %f \n",x,y,vfield[y*DIM+x].x,vfield[y*DIM+x].y,x_back, y_back );
             x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
-            //printf("%f %f\n",x_back, fmod(x_back,1.0) );
             x_back = fmod(x_back+1.0, .99999);
             y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
             y_back = fmod(y_back+1.0, .99999);
@@ -208,12 +205,9 @@ void advectVelocity(float time_step)
             if (y_back<0.0f || y_back>=1.0f){
                 printf("%f\n",y_back);
             }
-            //x_back = fmod(y_back+1.0, 1.0);
-            //x_back = fmod(y_back, 1.0);
+
             vfield_temp[y*DIM+x] =  bilinterp(vfield, x_back, y_back, DIM); 
-            //printf("%i %i\n",x,y );
-            //printf("%f\n",vfield[y*DIM+x].x  );
-           //printf("%f %f %f \n",x_back, 1.0f*x/DIM, bilinterp(vfield, x_back, y_back, DIM).x);
+
         }
     }
     swap(vfield, vfield_temp); 
@@ -354,8 +348,11 @@ void subtractpressure(float2* u, float* p, int n){
     for (int x =1; x<DIM-1; x++){
         for(int y =1; y<DIM-1; y++){
             //cout<<(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx)<<endl;
-            u[y*n+x].x=u[y*n+x].x-70000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx);
-            u[y*n+x].y=u[y*n+x].y-70000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx);
+            u[y*n+x].x=fmax(fmin(u[y*n+x].x-70000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx), 3.0), -3.0);
+            u[y*n+x].y=fmax(fmin(u[y*n+x].y-70000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx), 3.0), -3.0);
+
+            u[y*n+x].x=(!isnan(u[y*n+x].x))*u[y*n+x].x;
+            u[y*n+x].y=(!isnan(u[y*n+x].y))*u[y*n+x].y;
         }
     }
 
