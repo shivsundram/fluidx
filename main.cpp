@@ -328,7 +328,7 @@ void diffuse()
     //todo, correctly derive jacobi weights
     int n = DIM;
     float dx2 = (1.0f/DIM)*(1.0f/DIM);
-    float alpha= dx2/(dt*.0001f);
+    float alpha= dx2/(dt*.00011f);
     float rbeta = 1.0f/(4.0f+alpha);
     gsl1(vfield, vfield, alpha, rbeta, DIM, 20);  
 }
@@ -382,8 +382,8 @@ void subtractpressure(float2* u, float* p, int n){
     for (int x =1; x<DIM-1; x++){
         for(int y =1; y<DIM-1; y++){
             //cout<<(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx)<<endl;
-            u[y*n+x].x=fmax(fmin(u[y*n+x].x-80000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx), 3.0), -3.0);
-            u[y*n+x].y=fmax(fmin(u[y*n+x].y-80000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx), 3.0), -3.0);
+            u[y*n+x].x=fmax(fmin(u[y*n+x].x-90000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx), 3.0), -3.0);
+            u[y*n+x].y=fmax(fmin(u[y*n+x].y-90000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx), 3.0), -3.0);
 
             if (isnan(u[y*n+x].x)){
                 printf("nan sub\n");
