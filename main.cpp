@@ -179,6 +179,11 @@ float2 bilinterp(float2 * u, float x, float y, int dim)
 
     result.y=.999*result.y;
     result.x=.999*result.x;
+    if(isnan(result.x) || isnan(result.y)){
+        printf("nan interp \n");
+        result.x=0;
+        result.y=0;
+    }
     return result;
 }
 
@@ -196,11 +201,30 @@ void advectVelocity(float time_step)
         for (int y = 1 ;y < DIM-1; y++){
 //printf("x %i y %i x vel %f y vel %f xback %f yback %f \n",x,y,vfield[y*DIM+x].x,vfield[y*DIM+x].y,x_back, y_back );
             
+            if (isnan(vfield[y*DIM+x].x) || isnan(vfield[y*DIM+x].x)){
+                printf("nan advect %i %i\n",x,y);
+                vfield[y*DIM+x].x=0;
+                vfield[y*DIM+x].y=0;
+                printf("%f %f\n",vfield[(y-1)*DIM+x-1].x,vfield[(y-1)*DIM+x-1].x);
+                printf("%f %f\n",vfield[(y-1)*DIM+x+1].x,vfield[(y-1)*DIM+x+1].x);
+                printf("%f %f\n",vfield[(y+1)*DIM+x-1].x,vfield[(y+1)*DIM+x-1].x);
+                printf("%f %f\n",vfield[(y+1)*DIM+x+1].x,vfield[(y+1)*DIM+x+1].x);
+                vfield[(y-1)*DIM+x-1].x=0.0f;
+                vfield[(y-1)*DIM+x+1].x=0.0f;
+                vfield[(y+1)*DIM+x-1].x=0.0f;
+                vfield[(y+1)*DIM+x+1].x=0.0f;
+
+                vfield[(y-1)*DIM+x-1].y=0.0f;
+                vfield[(y-1)*DIM+x+1].y=0.0f;
+                vfield[(y+1)*DIM+x-1].y=0.0f;
+                vfield[(y+1)*DIM+x+1].y=0.0f;
+            }
         
             x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
             x_back = fmod(x_back+1.0, .99999);
             y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
             y_back = fmod(y_back+1.0, .99999);
+
             if (x_back<0.0f || x_back>=1.0f){
                 printf("%f\n",x_back);
             }
@@ -268,10 +292,17 @@ void gsl1(float2* u, float2* b, float alpha, float rbeta,int n, int iters)
 {
     for (int i = 0; i <iters; i ++)
     {
-        for (int x = 1 ; x<n-1; x++)
+        for (int y = 1 ; y<n-1; y++)
         {
-            for (int y =1; y<n-1; y++)
+            for (int x =1; x<n-1; x++)
             {
+                if (isnan(u[y*n+x].x) || isnan(u[y*n+x].y)){
+                    printf("nan gsl1 %i %i \n",x,y);
+                    u[y*n+x].x=0;
+                    u[y*n+x].y=0;
+                    continue;
+                }
+
                 float up    = u[(y+1)*n+x].x;
                 float down  = u[(y-1)*n+x].x;
                 float left  = u[(y)*n+x-1].x;
@@ -283,6 +314,7 @@ void gsl1(float2* u, float2* b, float alpha, float rbeta,int n, int iters)
                 left  = u[(y)*n+x-1].y;
                 right = u[(y)*n+x+1].y;
                 u[y*n+x].y=rbeta*(up+down+left+right+alpha*b[y*n+x].y);
+
             }
         }
         exchangeboundary(u, n);
@@ -350,14 +382,16 @@ void subtractpressure(float2* u, float* p, int n){
     for (int x =1; x<DIM-1; x++){
         for(int y =1; y<DIM-1; y++){
             //cout<<(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx)<<endl;
-            u[y*n+x].x=fmax(fmin(u[y*n+x].x-70000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx), 3.0), -3.0);
-            u[y*n+x].y=fmax(fmin(u[y*n+x].y-70000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx), 3.0), -3.0);
+            u[y*n+x].x=fmax(fmin(u[y*n+x].x-80000*(p[(y)*n+x+1]-p[(y)*n+x-1])/(2.0f*dx), 3.0), -3.0);
+            u[y*n+x].y=fmax(fmin(u[y*n+x].y-80000*(p[(y+1)*n+x]-p[(y-1)*n+x])/(2.0f*dx), 3.0), -3.0);
 
             if (isnan(u[y*n+x].x)){
-                u[y*n+x].x=0;
+                printf("nan sub\n");
+                u[y*n+x].x=u[y*n+x+1].x;
             }
             if (isnan(u[y*n+x].y)){
-                u[y*n+x].y=0;
+                printf("nan sub\n");
+                u[y*n+x].y=u[y*n+x+1].y;
             }
         }
     }
@@ -472,6 +506,8 @@ void motion(int x, int y)
     			for (int j = -10 ; j<10 ;j ++){
                     //TODO, use modulo function for indices of vfield
                     if(ny+i<DIM && ny+i>=0 && nx+j<DIM && nx+j>=0){
+
+
 		              vfield[(ny+i)*DIM+nx+j].x +=-cxn*.50f;
 		              vfield[(ny+i)*DIM+nx+j].y +=cyn*.50f;
                     }
@@ -611,8 +647,9 @@ void fluidx(int argc, char **argv){
     pressure = (float *)malloc(sizeof(float) * DS);
 
     initvfield(vfield, 0.01f, 0.01f);
+    initvfield1(pressure, 0.01f);
     initvfield(vfield_temp , 0.01f, 0.01f);
-   // initvfield(divfield, 0.0f, 0.0f);
+    initvfield1(divfield, 0.0f);
 
     particles = (float2 *)malloc(sizeof(float2) * DS);
     initParticles(particles, DIM, DIM);
