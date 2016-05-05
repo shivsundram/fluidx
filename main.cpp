@@ -177,8 +177,8 @@ float2 bilinterp(float2 * u, float x, float y, int dim)
     result.y = (y-floor(y))*fu + (floor(y)+1-y)*fb;   
 ;
 
-    result.y=.999*result.y;
-    result.x=.999*result.x;
+    result.y=.99999*result.y;
+    result.x=.99999*result.x;
     if(isnan(result.x) || isnan(result.y)){
         printf("nan interp \n");
         result.x=0;
@@ -239,6 +239,45 @@ void advectVelocity(float time_step)
     swap(vfield, vfield_temp); 
     return ;
 }
+
+
+void vonNeummann(float2* u, int n){
+    int top = n-1;
+    //zero average top and bottom boundaries
+    int scale=1;
+    for (int i = 0; i<n; i++){
+        u[i].x=-scale*u[(n)*(1)+i].x;
+        u[i].y=-scale*u[(n)*(1)+i].y;
+
+        u[n*(top)+i].x=-scale*u[(n)*(top-1)+i].x;
+        u[n*(top)+i].y=-scale*u[(n)*(top-1)+i].y;
+    }
+
+    //zero average left and right boundaries
+    for (int i = 1; i<n-1; i++){
+        u[i*n].x=-scale*u[n*i+1].x;
+        u[i*n].y=-scale*u[n*i+1].y;
+
+        u[n*i+top].x=-scale*u[(n)*i+top-1].x;
+        u[n*i+top].y=-scale*u[(n)*i+top-1].y;
+    }
+}
+
+void vonNeummann1(float* u, int n){
+    int top = n-1;
+    //zero average top and bottom boundaries
+    for (int i = 0; i<n; i++){
+        u[i]=-u[(n)*(1)+i];
+        u[n*(top)+i]=-u[(n)*(top-1)+i];
+    }
+
+    //zero average left and right boundaries
+    for (int i = 1; i<n-1; i++){
+        u[i*n]=-u[n*i+1];
+        u[n*i+top]=-u[(n)*i+top-1];
+    }
+}
+
 
 
 void exchangeboundary(float2* u, int n){
@@ -317,7 +356,8 @@ void gsl1(float2* u, float2* b, float alpha, float rbeta,int n, int iters)
 
             }
         }
-        exchangeboundary(u, n);
+        vonNeummann(u,n);
+        //exchangeboundary(u, n);
     }
 }
 
@@ -328,7 +368,7 @@ void diffuse()
     //todo, correctly derive jacobi weights
     int n = DIM;
     float dx2 = (1.0f/DIM)*(1.0f/DIM);
-    float alpha= dx2/(dt*.0001f);
+    float alpha= dx2/(dt*.00004f);
     float rbeta = 1.0f/(4.0f+alpha);
     gsl1(vfield, vfield, alpha, rbeta, DIM, 20);  
 }
@@ -349,7 +389,8 @@ void divergence(float2 *u, float *d, int n){
             //cout<<u[(y)*n+x].x<<", "<<up.x<<", "<<down.x<<", "<<right.x<<", "<<left.x<<endl;
         }
     }
-    exchangeboundary1(d,n);
+    //exchangeboundary1(d,n);
+    vonNeummann1(d,n);
 }
 
 
@@ -371,7 +412,8 @@ void gsl11(float* d, float *p, float alpha, float rbeta,int n, int iters)
                 p[y*n+x]=rbeta*(up+down+left+right+alpha*d[y*n+x]);
             }
         }
-        exchangeboundary1(p, n);
+        //exchangeboundary1(p, n);
+        vonNeummann1(p,n);
     }
 }
 
@@ -421,7 +463,7 @@ void simulate()
 
     diffuse();
 
-    project();
+   project();
 }
 
 void memcopy()
@@ -505,11 +547,12 @@ void motion(int x, int y)
     		for (int i = -10 ; i<10 ;i ++){
     			for (int j = -10 ; j<10 ;j ++){
                     //TODO, use modulo function for indices of vfield
-                    if(ny+i<DIM && ny+i>=0 && nx+j<DIM && nx+j>=0){
+                    if(ny+i<DIM-1 && ny+i>=0 && nx+j<DIM-1 && nx+j>=0){
 
-
-		              vfield[(ny+i)*DIM+nx+j].x +=-cxn*.50f;
-		              vfield[(ny+i)*DIM+nx+j].y +=cyn*.50f;
+                        //(e^(.05*-.5*x^2))
+                        float s=exp(.1f*(i*i+j*j)*-.5f);
+		              vfield[(ny+i)*DIM+nx+j].x +=-cxn*s;
+		              vfield[(ny+i)*DIM+nx+j].y +=cyn*s;
                     }
     			}
     		}
@@ -543,6 +586,29 @@ void testBoundary(){
     }
     printGridX(z, n);
     exchangeboundary(z,n);
+    cout<<endl;
+    printGridX(z, n);
+
+}
+
+void testBoundary0(){
+    int n =4;
+    float2* z = (float2*) malloc(n*n*sizeof(float2));
+    for (int i =0 ; i<n*n; i++){
+        z[i].x=0.0f;
+        z[i].y=0.0f;
+    }   
+    printGridX(z, n);
+    float c = 1.0f;
+    cout<<endl;
+    for (int i =1 ; i <n-1; i++){
+        for (int j=1;j<n-1;j++){
+            z[n*j+i].x=c;
+            c=c+1.0f;
+        }
+    }
+    printGridX(z, n);
+    vonNeummann(z,n);
     cout<<endl;
     printGridX(z, n);
 
@@ -670,6 +736,7 @@ int main(int argc, char **argv)
     //testswap();
     //testjacobi();
     //testBoundary();
+    testBoundary0();
     //testgsl1();
     //testdivergence();
 	return 0;
