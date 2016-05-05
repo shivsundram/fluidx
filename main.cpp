@@ -55,6 +55,64 @@ float randhalf()
 	return .5f-((float) rand())/RAND_MAX;
 }
 
+
+void pushout(){
+    int top = DIM-1;
+    for (int i = 0; i<DIM; i++){
+        vfield[DIM+DIM+i].y=5.0f*((float) abs(rand()))/RAND_MAX;
+
+        vfield[DIM*(top-2)+i].y=-5.0f*((float) abs(rand()))/RAND_MAX;
+    }
+
+    for (int i = 0; i<DIM; i++){
+        vfield[2+i*DIM].y=5.0f*((float) abs(rand()))/RAND_MAX;
+        vfield[top-2+i*DIM].y=-5.0f*((float) abs(rand()))/RAND_MAX;
+
+        //vfield[DIM*(top-3)+i].y=-30.0f*((float) abs(rand()))/RAND_MAX;
+    }
+
+}
+
+void vonNeummann(float2* u, int n){
+    int top = n-1;
+    //zero average top and bottom boundaries
+    int scale=40;
+    for (int i = 0; i<n; i++){
+        u[i].x=-scale*u[(n)*(1)+i].x;
+        u[i].y=-scale*u[(n)*(1)+i].y;
+
+        u[n*(top)+i].x=-scale*u[(n)*(top-1)+i].x;
+        u[n*(top)+i].y=-scale*u[(n)*(top-1)+i].y;
+    }
+
+    //zero average left and right boundaries
+    for (int i = 1; i<n-1; i++){
+        u[i*n].x=-scale*u[n*i+1].x;
+        u[i*n].y=-scale*u[n*i+1].y;
+
+        u[n*i+top].x=-scale*u[(n)*i+top-1].x;
+        u[n*i+top].y=-scale*u[(n)*i+top-1].y;
+    }
+}
+
+void vonNeummann1(float* u, int n){
+    int top = n-1;
+    //zero average top and bottom boundaries
+    for (int i = 0; i<n; i++){
+        u[i]=-u[(n)*(1)+i];
+        u[n*(top)+i]=-u[(n)*(top-1)+i];
+    }
+
+    //zero average left and right boundaries
+    for (int i = 1; i<n-1; i++){
+        u[i*n]=-u[n*i+1];
+        u[n*i+top]=-u[(n)*i+top-1];
+    }
+}
+
+
+
+
 //initialize DIM*DIM particles, and small
 //random offset as defined by randhalf
 void initParticles(float2 *p, int dx, int dy)
@@ -111,8 +169,11 @@ void advectParticles()
 	    	//printf("%f %f \n",0.0+j,0.0+i );
 	    	int x = particles[j*DIM+i].x*DIM;
 	    	int y = particles[j*DIM+i].y*DIM;
-	        particles[j*DIM+i].x =fmod(1.0+particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,1.0f);
-	        particles[j*DIM+i].y =fmod(1.0+particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,1.0f);
+	        //particles[j*DIM+i].x =fmod(1.0+particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,1.0f);
+	        //particles[j*DIM+i].y =fmod(1.0+particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,1.0f);
+            particles[j*DIM+i].x =fmin(fmax(particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,0.01), .99f);
+            particles[j*DIM+i].y =fmin(fmax(particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,0.01f), .99f);
+
             //cout<<j*DIM+i<<", "<<particles[j*DIM+i].x<<", "<<particles[j*DIM+i].y<<endl;
 	    }
 	}
@@ -219,7 +280,7 @@ void advectVelocity(float time_step)
                 vfield[(y+1)*DIM+x-1].y=0.0f;
                 vfield[(y+1)*DIM+x+1].y=0.0f;
             }
-        
+
             x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
             x_back = fmod(x_back+1.0, .99999);
             y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
@@ -237,46 +298,10 @@ void advectVelocity(float time_step)
         }
     }
     swap(vfield, vfield_temp); 
+    vonNeummann(vfield,DIM);
     return ;
 }
 
-
-void vonNeummann(float2* u, int n){
-    int top = n-1;
-    //zero average top and bottom boundaries
-    int scale=1;
-    for (int i = 0; i<n; i++){
-        u[i].x=-scale*u[(n)*(1)+i].x;
-        u[i].y=-scale*u[(n)*(1)+i].y;
-
-        u[n*(top)+i].x=-scale*u[(n)*(top-1)+i].x;
-        u[n*(top)+i].y=-scale*u[(n)*(top-1)+i].y;
-    }
-
-    //zero average left and right boundaries
-    for (int i = 1; i<n-1; i++){
-        u[i*n].x=-scale*u[n*i+1].x;
-        u[i*n].y=-scale*u[n*i+1].y;
-
-        u[n*i+top].x=-scale*u[(n)*i+top-1].x;
-        u[n*i+top].y=-scale*u[(n)*i+top-1].y;
-    }
-}
-
-void vonNeummann1(float* u, int n){
-    int top = n-1;
-    //zero average top and bottom boundaries
-    for (int i = 0; i<n; i++){
-        u[i]=-u[(n)*(1)+i];
-        u[n*(top)+i]=-u[(n)*(top-1)+i];
-    }
-
-    //zero average left and right boundaries
-    for (int i = 1; i<n-1; i++){
-        u[i*n]=-u[n*i+1];
-        u[n*i+top]=-u[(n)*i+top-1];
-    }
-}
 
 
 
@@ -544,8 +569,8 @@ void motion(int x, int y)
     if (clicked)
     {
     		//printf("%f %f %i %i \n",fx,fy,nx, ny );
-    		for (int i = -10 ; i<10 ;i ++){
-    			for (int j = -10 ; j<10 ;j ++){
+    		for (int i = -5 ; i<5 ;i ++){
+    			for (int j = -5 ; j<5 ;j ++){
                     //TODO, use modulo function for indices of vfield
                     if(ny+i<DIM-1 && ny+i>=0 && nx+j<DIM-1 && nx+j>=0){
 
@@ -693,6 +718,22 @@ void testdivergence(){
     printGrid(d,n);
 }
 
+void keyPressed(unsigned char key, int xmouse, int ymouse){
+    if(key=='d'){
+        printf("hey!!\n");
+        for(int i =0 ;i<DIM*DIM;i++){
+            printf("%f %f\n",particles[i].x, particles[i].y);
+
+        }
+    }
+    else if (key=='p'){
+        pushout();
+    }
+}
+
+
+
+
 int initGL(int *argc, char **argv)
 {
     glutInit(argc, argv);
@@ -703,6 +744,7 @@ int initGL(int *argc, char **argv)
     glutMouseFunc(click);
     glutMotionFunc(motion);
     glutReshapeFunc(reshape);
+    glutKeyboardFunc(keyPressed);
     return true;
 }
 
