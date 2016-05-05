@@ -65,8 +65,8 @@ void pushout(){
     }
 
     for (int i = 0; i<DIM; i++){
-        vfield[2+i*DIM].y=5.0f*((float) abs(rand()))/RAND_MAX;
-        vfield[top-2+i*DIM].y=-5.0f*((float) abs(rand()))/RAND_MAX;
+        vfield[2+i*DIM].x=5.0f*((float) abs(rand()))/RAND_MAX;
+        vfield[top-2+i*DIM].x=-5.0f*((float) abs(rand()))/RAND_MAX;
 
         //vfield[DIM*(top-3)+i].y=-30.0f*((float) abs(rand()))/RAND_MAX;
     }
@@ -76,7 +76,7 @@ void pushout(){
 void vonNeummann(float2* u, int n){
     int top = n-1;
     //zero average top and bottom boundaries
-    int scale=40;
+    int scale=1;
     for (int i = 0; i<n; i++){
         u[i].x=-scale*u[(n)*(1)+i].x;
         u[i].y=-scale*u[(n)*(1)+i].y;
@@ -169,10 +169,10 @@ void advectParticles()
 	    	//printf("%f %f \n",0.0+j,0.0+i );
 	    	int x = particles[j*DIM+i].x*DIM;
 	    	int y = particles[j*DIM+i].y*DIM;
-	        //particles[j*DIM+i].x =fmod(1.0+particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,1.0f);
-	        //particles[j*DIM+i].y =fmod(1.0+particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,1.0f);
-            particles[j*DIM+i].x =fmin(fmax(particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,0.01), .99f);
-            particles[j*DIM+i].y =fmin(fmax(particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,0.01f), .99f);
+	        particles[j*DIM+i].x =fmod(1.0+particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,1.0f);
+	        particles[j*DIM+i].y =fmod(1.0+particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,1.0f);
+            //particles[j*DIM+i].x =fmin(fmax(particles[j*DIM+i].x + dt*vfield[y*DIM+x].x,0.01), .99f);
+            //particles[j*DIM+i].y =fmin(fmax(particles[j*DIM+i].y + dt*vfield[y*DIM+x].y,0.01f), .99f);
 
             //cout<<j*DIM+i<<", "<<particles[j*DIM+i].x<<", "<<particles[j*DIM+i].y<<endl;
 	    }
@@ -254,57 +254,6 @@ void vswap(){
     vfield_temp =temp;
 }
 
-void advectVelocity(float time_step)
-{
-    float x_back = 0.0f; 
-    float y_back = 0.0f; 
-    for (int x = 1; x < DIM-1; x++){
-        for (int y = 1 ;y < DIM-1; y++){
-//printf("x %i y %i x vel %f y vel %f xback %f yback %f \n",x,y,vfield[y*DIM+x].x,vfield[y*DIM+x].y,x_back, y_back );
-            
-            if (isnan(vfield[y*DIM+x].x) || isnan(vfield[y*DIM+x].x)){
-                printf("nan advect %i %i\n",x,y);
-                vfield[y*DIM+x].x=0;
-                vfield[y*DIM+x].y=0;
-                printf("%f %f\n",vfield[(y-1)*DIM+x-1].x,vfield[(y-1)*DIM+x-1].x);
-                printf("%f %f\n",vfield[(y-1)*DIM+x+1].x,vfield[(y-1)*DIM+x+1].x);
-                printf("%f %f\n",vfield[(y+1)*DIM+x-1].x,vfield[(y+1)*DIM+x-1].x);
-                printf("%f %f\n",vfield[(y+1)*DIM+x+1].x,vfield[(y+1)*DIM+x+1].x);
-                vfield[(y-1)*DIM+x-1].x=0.0f;
-                vfield[(y-1)*DIM+x+1].x=0.0f;
-                vfield[(y+1)*DIM+x-1].x=0.0f;
-                vfield[(y+1)*DIM+x+1].x=0.0f;
-
-                vfield[(y-1)*DIM+x-1].y=0.0f;
-                vfield[(y-1)*DIM+x+1].y=0.0f;
-                vfield[(y+1)*DIM+x-1].y=0.0f;
-                vfield[(y+1)*DIM+x+1].y=0.0f;
-            }
-
-            x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
-            x_back = fmod(x_back+1.0, .99999);
-            y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
-            y_back = fmod(y_back+1.0, .99999);
-
-            if (x_back<0.0f || x_back>=1.0f){
-                printf("%f\n",x_back);
-            }
-            if (y_back<0.0f || y_back>=1.0f){
-                printf("%f\n",y_back);
-            }
-
-            vfield_temp[y*DIM+x] =  bilinterp(vfield, x_back, y_back, DIM); 
-
-        }
-    }
-    swap(vfield, vfield_temp); 
-    vonNeummann(vfield,DIM);
-    return ;
-}
-
-
-
-
 void exchangeboundary(float2* u, int n){
     //exchange top and bottom
     int top = n-1;
@@ -349,6 +298,57 @@ void exchangeboundary1(float* u, int n){
     }
 }
 
+void advectVelocity(float time_step)
+{
+    float x_back = 0.0f; 
+    float y_back = 0.0f; 
+    for (int x = 1; x < DIM-1; x++){
+        for (int y = 1 ;y < DIM-1; y++){
+//printf("x %i y %i x vel %f y vel %f xback %f yback %f \n",x,y,vfield[y*DIM+x].x,vfield[y*DIM+x].y,x_back, y_back );
+            
+            if (isnan(vfield[y*DIM+x].x) || isnan(vfield[y*DIM+x].x)){
+                printf("nan advect %i %i\n",x,y);
+                vfield[y*DIM+x].x=0;
+                vfield[y*DIM+x].y=0;
+                printf("%f %f\n",vfield[(y-1)*DIM+x-1].x,vfield[(y-1)*DIM+x-1].x);
+                printf("%f %f\n",vfield[(y-1)*DIM+x+1].x,vfield[(y-1)*DIM+x+1].x);
+                printf("%f %f\n",vfield[(y+1)*DIM+x-1].x,vfield[(y+1)*DIM+x-1].x);
+                printf("%f %f\n",vfield[(y+1)*DIM+x+1].x,vfield[(y+1)*DIM+x+1].x);
+                vfield[(y-1)*DIM+x-1].x=0.0f;
+                vfield[(y-1)*DIM+x+1].x=0.0f;
+                vfield[(y+1)*DIM+x-1].x=0.0f;
+                vfield[(y+1)*DIM+x+1].x=0.0f;
+
+                vfield[(y-1)*DIM+x-1].y=0.0f;
+                vfield[(y-1)*DIM+x+1].y=0.0f;
+                vfield[(y+1)*DIM+x-1].y=0.0f;
+                vfield[(y+1)*DIM+x+1].y=0.0f;
+            }
+
+            x_back = ((1.0f*x)/DIM) - time_step*vfield[y*DIM+x].x;
+            x_back = fmod(x_back+1.0, .99999);
+            y_back = ((1.0f*y)/DIM) - time_step*vfield[y*DIM+x].y;
+            y_back = fmod(y_back+1.0, .99999);
+
+            if (x_back<0.0f || x_back>=1.0f){
+                printf("%f\n",x_back);
+            }
+            if (y_back<0.0f || y_back>=1.0f){
+                printf("%f\n",y_back);
+            }
+
+            vfield_temp[y*DIM+x] =  bilinterp(vfield, x_back, y_back, DIM); 
+
+        }
+    }
+    swap(vfield, vfield_temp); 
+    //vonNeummann(vfield,DIM);
+    exchangeboundary(vfield,DIM);
+    return ;
+}
+
+
+
 //gauss siedel preconditioned by the L1 inverse
 //using L1 inverse requires only 1 array, eliminating
 //the need for buffer swapping
@@ -381,8 +381,8 @@ void gsl1(float2* u, float2* b, float alpha, float rbeta,int n, int iters)
 
             }
         }
-        vonNeummann(u,n);
-        //exchangeboundary(u, n);
+        //vonNeummann(u,n);
+        exchangeboundary(u, n);
     }
 }
 
@@ -393,7 +393,7 @@ void diffuse()
     //todo, correctly derive jacobi weights
     int n = DIM;
     float dx2 = (1.0f/DIM)*(1.0f/DIM);
-    float alpha= dx2/(dt*.00004f);
+    float alpha= dx2/(dt*.0001f);
     float rbeta = 1.0f/(4.0f+alpha);
     gsl1(vfield, vfield, alpha, rbeta, DIM, 20);  
 }
@@ -414,8 +414,8 @@ void divergence(float2 *u, float *d, int n){
             //cout<<u[(y)*n+x].x<<", "<<up.x<<", "<<down.x<<", "<<right.x<<", "<<left.x<<endl;
         }
     }
-    //exchangeboundary1(d,n);
-    vonNeummann1(d,n);
+    exchangeboundary1(d,n);
+    //vonNeummann1(d,n);
 }
 
 
@@ -437,8 +437,8 @@ void gsl11(float* d, float *p, float alpha, float rbeta,int n, int iters)
                 p[y*n+x]=rbeta*(up+down+left+right+alpha*d[y*n+x]);
             }
         }
-        //exchangeboundary1(p, n);
-        vonNeummann1(p,n);
+        exchangeboundary1(p, n);
+        //vonNeummann1(p,n);
     }
 }
 
@@ -773,6 +773,8 @@ void fluidx(int argc, char **argv){
 
 int main(int argc, char **argv)
 {
+
+
     fluidx(argc, argv);
     //testbilinterp();
     //testswap();
