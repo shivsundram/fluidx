@@ -754,8 +754,8 @@ void fluidx(int argc, char **argv){
     divfield = (float *)malloc(sizeof(float) * DS);
     pressure = (float *)malloc(sizeof(float) * DS);
 
-    initvfield(vfield, 0.01f, 0.01f);
-    initvfield1(pressure, 0.01f);
+    initvfield(vfield, 0.00f, 0.00f);
+    initvfield1(pressure, 0.0f);
     initvfield(vfield_temp , 0.01f, 0.01f);
     initvfield1(divfield, 0.0f);
 
